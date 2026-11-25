@@ -24,7 +24,7 @@
     "watch": "node esbuild.mjs --watch",
     "test": "vitest run && npm run test:tz",
     "test:tz": "TZ=Asia/Kolkata vitest run test/tz.test.ts && TZ=America/New_York vitest run test/tz.test.ts",
-    "typecheck": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json --threshold error",
+    "typecheck": "tsc --noEmit && svelte-check --tsconfig ./webview/tsconfig.json --threshold error",
     "package": "npm run build && vsce package --no-dependencies"
   },
   "dependencies": {
