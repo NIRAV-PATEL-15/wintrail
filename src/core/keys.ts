@@ -118,9 +118,15 @@ export function sealTo(publicKey: Buffer, plaintext: Buffer): SealedBlob {
   return { epk: b64(epk), ...out };
 }
 
-export function openSealed(privateKey: Buffer, b: SealedBlob): Buffer {
+/** A private key prepared once (KeyObject + raw public key), for fast bulk opening. */
+export interface Opener { priv: KeyObject; recipient: Buffer }
+export function makeOpener(privateKey: Buffer): Opener {
   const priv = createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-  const recipient = rawPublic(createPublicKey(priv));
+  return { priv, recipient: rawPublic(createPublicKey(priv)) };
+}
+
+export function openSealed(privateKey: Buffer | Opener, b: SealedBlob): Buffer {
+  const { priv, recipient } = Buffer.isBuffer(privateKey) ? makeOpener(privateKey) : privateKey;
   const epk = unb64(b.epk);
   const shared = diffieHellman({ privateKey: priv, publicKey: publicFromRaw(epk) });
   const key = sealKey(shared, epk, recipient);
