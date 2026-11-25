@@ -40,5 +40,295 @@
     "svelte-check": "4.7.8",
     "typescript": "5.6.3",
     "vitest": "4.1.12"
-  }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wintrail",
+          "title": "Wintrail",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "wintrail": [
+        {
+          "type": "webview",
+          "id": "wintrail.dashboard",
+          "name": "Dashboard"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "wintrail.open",
+        "title": "Open Dashboard",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.quickAdd",
+        "title": "Log a Win…",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.unlock",
+        "title": "Unlock",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.lock",
+        "title": "Lock",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.writeStandup",
+        "title": "Write Standup",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.exportAppraisal",
+        "title": "Export for Appraisal (Markdown)…",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.exportBackup",
+        "title": "Export Encrypted Backup…",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.importBackup",
+        "title": "Import Backup (merge)…",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.chooseBackupFolder",
+        "title": "Choose Auto-Backup Folder…",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.changePassword",
+        "title": "Change Password…",
+        "category": "Wintrail"
+      },
+      {
+        "command": "wintrail.focus",
+        "title": "Focus Mode (mute break reminders)…",
+        "category": "Wintrail"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "wintrail.quickAdd",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "wintrail.lock",
+          "when": "view == wintrail.dashboard",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Wintrail",
+      "properties": {
+        "wintrail.autoLockMinutes": {
+          "type": "number",
+          "default": 15,
+          "minimum": 0,
+          "description": "Lock after this many minutes without interaction. 0 = never (not recommended).",
+          "scope": "application"
+        },
+        "wintrail.rememberOnThisMachine": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the key in the OS keychain so Wintrail opens without a password after restart (until you lock it).",
+          "scope": "application"
+        },
+        "wintrail.autoBackupFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder that receives an encrypted backup after every change. Use a Dropbox/Drive/OneDrive folder for cloud sync.",
+          "scope": "application"
+        },
+        "wintrail.backupKeep": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "How many auto-backup files to keep.",
+          "scope": "application"
+        },
+        "wintrail.yearStartMonth": {
+          "type": "number",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 12,
+          "description": "First month of your appraisal year (1 = January, 4 = April–March …).",
+          "scope": "application"
+        },
+        "wintrail.breaks.eyes.interval": {
+          "type": "number",
+          "default": 20,
+          "minimum": 5,
+          "maximum": 120,
+          "description": "Minutes of active coding between eyes reminders.",
+          "scope": "application"
+        },
+        "wintrail.breaks.eyes.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show eyes reminders.",
+          "scope": "application"
+        },
+        "wintrail.breaks.eyes.style": {
+          "type": "string",
+          "enum": [
+            "notification",
+            "screen"
+          ],
+          "default": "notification",
+          "description": "How eyes reminders appear: a VS Code notification, or a full animated break screen.",
+          "scope": "application"
+        },
+        "wintrail.breaks.stretch.interval": {
+          "type": "number",
+          "default": 50,
+          "minimum": 10,
+          "maximum": 240,
+          "description": "Minutes of active coding between stretch reminders.",
+          "scope": "application"
+        },
+        "wintrail.breaks.stretch.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show stretch reminders.",
+          "scope": "application"
+        },
+        "wintrail.breaks.stretch.style": {
+          "type": "string",
+          "enum": [
+            "notification",
+            "screen"
+          ],
+          "default": "notification",
+          "description": "How stretch reminders appear: a VS Code notification, or a full animated break screen.",
+          "scope": "application"
+        },
+        "wintrail.breaks.water.interval": {
+          "type": "number",
+          "default": 75,
+          "minimum": 15,
+          "maximum": 240,
+          "description": "Minutes of active coding between water reminders.",
+          "scope": "application"
+        },
+        "wintrail.breaks.water.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show water reminders.",
+          "scope": "application"
+        },
+        "wintrail.breaks.water.style": {
+          "type": "string",
+          "enum": [
+            "notification",
+            "screen"
+          ],
+          "default": "notification",
+          "description": "How water reminders appear: a VS Code notification, or a full animated break screen.",
+          "scope": "application"
+        },
+        "wintrail.breaks.eyeSeconds": {
+          "type": "number",
+          "default": 20,
+          "minimum": 10,
+          "maximum": 120,
+          "description": "Length of the eye-break countdown (seconds).",
+          "scope": "application"
+        },
+        "wintrail.breaks.stretchSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 30,
+          "maximum": 600,
+          "description": "Length of the stretch break (seconds).",
+          "scope": "application"
+        },
+        "wintrail.breaks.snoozeMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "Snooze length (minutes).",
+          "scope": "application"
+        },
+        "wintrail.breaks.idleMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Stop counting active time after this many idle minutes.",
+          "scope": "application"
+        },
+        "wintrail.breaks.resetMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "A pause this long counts as a real break and resets the timers.",
+          "scope": "application"
+        },
+        "wintrail.breaks.focusPresets": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 15,
+            "maximum": 480
+          },
+          "default": [
+            60,
+            120
+          ],
+          "maxItems": 3,
+          "description": "Focus-mode durations offered (minutes).",
+          "scope": "application"
+        },
+        "wintrail.breaks.workHours.start": {
+          "type": "string",
+          "default": "",
+          "pattern": "^$|^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Only remind between these hours (HH:MM). Empty = any time.",
+          "scope": "application"
+        },
+        "wintrail.breaks.workHours.end": {
+          "type": "string",
+          "default": "",
+          "pattern": "^$|^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "End of working hours (HH:MM).",
+          "scope": "application"
+        }
+      }
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "keywords": [
+    "brag document",
+    "work log",
+    "journal",
+    "standup",
+    "appraisal",
+    "performance review",
+    "break reminder",
+    "pomodoro",
+    "2026"
+  ]
 }
