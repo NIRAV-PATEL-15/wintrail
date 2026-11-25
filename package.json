@@ -1,0 +1,44 @@
+{
+  "name": "wintrail",
+  "displayName": "Wintrail",
+  "description": "Your private, encrypted trail of work wins: quick log, standup drafts for Teams, year-in-review for appraisals, and break reminders.",
+  "version": "0.1.0",
+  "publisher": "NiravPatel15",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NIRAV-PATEL-15/wintrail.git"
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "test": "vitest run && npm run test:tz",
+    "test:tz": "TZ=Asia/Kolkata vitest run test/tz.test.ts && TZ=America/New_York vitest run test/tz.test.ts",
+    "typecheck": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json --threshold error",
+    "package": "npm run build && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "hash-wasm": "4.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.6",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "3.9.2",
+    "esbuild": "0.28.2",
+    "esbuild-svelte": "0.9.5",
+    "svelte": "5.59.1",
+    "svelte-check": "4.7.8",
+    "typescript": "5.6.3",
+    "vitest": "4.1.12"
+  }
+}

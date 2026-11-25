@@ -1,0 +1,13 @@
+.vscode/**
+.github/**
+.superpowers/**
+src/**
+webview/**
+test/**
+docs/**
+node_modules/**
+images/**
+esbuild.mjs
+tsconfig*.json
+*.map
+.gitignore
