@@ -1,0 +1,76 @@
+name: Release
+# Push a tag like v0.1.3 → build & test (no credentials), then publish the exact tested .vsix to the
+# VS Code Marketplace (trusted publishing / OIDC), Open VSX, and a GitHub release.
+#
+# Security layout: the build job installs ~250 npm dev packages and runs their code, so it gets
+# read-only permissions and no credentials. Only the publish job, which runs no project
+# dependencies, can mint the Marketplace OIDC token, read OVSX_PAT, or write releases.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22, cache: npm }
+      - name: Tag must match package.json version
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          [ "$PKG" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME != package.json $PKG"; exit 1; }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Package
+        run: npx -y @vscode/vsce@4.1.1 package --no-dependencies --out wintrail.vsix
+      - name: Release notes from CHANGELOG
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          NOTES=$(awk -v v="## $VER" 'index($0, v)==1 {f=1; next} /^## / && f {exit} f' CHANGELOG.md)
+          printf 'Install: search **Wintrail** in VS Code Extensions, or `code --install-extension NiravPatel15.wintrail`.\n%s\n' "$NOTES" > notes.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release
+          path: |
+            wintrail.vsix
+            notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the GitHub release
+      id-token: write   # `vsce publish --oidc` via the Marketplace trusted publishing policy
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: { name: release }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - name: Publish to VS Code Marketplace
+        run: npx -y @vscode/vsce@4.1.1 publish --oidc --packagePath wintrail.vsix
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}   # ovsx reads the token from the environment
+        run: |
+          npx -y ovsx@1.4.0 verify-pat NiravPatel15   # fails loudly if the token can't publish here
+          npx -y ovsx@1.4.0 publish --packagePath wintrail.vsix
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          cp wintrail.vsix "wintrail-$VER.vsix"
+          gh release create "$GITHUB_REF_NAME" "wintrail-$VER.vsix" --title "Wintrail $VER" --notes-file notes.md

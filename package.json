@@ -330,5 +330,15 @@
     "break reminder",
     "pomodoro",
     "2026"
-  ]
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1b4b",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "bugs": {
+    "url": "https://github.com/NIRAV-PATEL-15/wintrail/issues"
+  },
+  "homepage": "https://github.com/NIRAV-PATEL-15/wintrail#readme"
 }
