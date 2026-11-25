@@ -69,7 +69,7 @@ export async function wrapKeys(k: KeySet, password: string, cost: KdfCost = DEFA
 }
 
 export function wrapKeysWith(k: KeySet, wrapKey: Buffer, kdf: KdfParams): WrappedKeys {
-  const inner = Buffer.from(JSON.stringify({ priv: b64(k.privateKey), mac: b64(k.macKey) }));
+  const inner = Buffer.from(JSON.stringify({ priv: b64(k.privateKey), mac: b64(k.macKey), pub: b64(k.publicKey) }));
   return { v: 1, kdf, pub: b64(k.publicKey), ...gcmEncrypt(wrapKey, inner) };
 }
 
@@ -79,15 +79,30 @@ export function isWrappedKeys(x: unknown): x is WrappedKeys {
     && typeof w.iv === "string" && unb64(w.iv).length === 12 && typeof w.ct === "string";
 }
 
-/** Open the wrapped keys with an already-derived wrap key (e.g. remembered in the OS keychain). */
+/** The key file's public key doesn't belong to its private key: someone swapped it. */
+export class VaultTamperedError extends Error {
+  constructor(msg = "Wintrail's key file was modified by someone else. Your log was not changed. Restore vault.json from a backup.") {
+    super(msg);
+    this.name = "VaultTamperedError";
+  }
+}
+
+/** Open the wrapped keys with an already-derived wrap key (e.g. remembered in the OS keychain).
+ *  Verifies that the plaintext public key really belongs to the wrapped private key. */
 export function unwrapWithKey(w: WrappedKeys, wrapKey: Buffer): { privateKey: Buffer; macKey: Buffer } {
-  let inner: { priv: string; mac: string };
+  let inner: { priv: string; mac: string; pub?: string };
   try {
     inner = JSON.parse(gcmDecrypt(wrapKey, w.iv, w.ct).toString("utf8"));
   } catch {
     throw new WrongPasswordError();
   }
-  return { privateKey: unb64(inner.priv), macKey: unb64(inner.mac) };
+  const privateKey = unb64(inner.priv);
+  const derived = b64(makeOpener(privateKey).recipient);
+  if (derived !== w.pub || (inner.pub !== undefined && inner.pub !== w.pub)) {
+    privateKey.fill(0);
+    throw new VaultTamperedError();
+  }
+  return { privateKey, macKey: unb64(inner.mac) };
 }
 
 export async function unwrapKeys(w: WrappedKeys, password: string): Promise<{ privateKey: Buffer; macKey: Buffer; wrapKey: Buffer }> {

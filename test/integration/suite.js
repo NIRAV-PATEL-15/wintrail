@@ -43,6 +43,21 @@ exports.run = async function () {
     assert.ok(breaks.scheduler.focusEndsAt, "focus mode on");
     log("break settings + focus ok");
 
+    // I3: lock deletes the remembered key; a lock in another window locks this one
+    await vscode.workspace.getConfiguration("wintrail").update("rememberOnThisMachine", true, vscode.ConfigurationTarget.Global);
+    await s.syncRememberedKey();
+    assert.ok(await s.ctx.secrets.get("wintrail.rememberedKey"), "key remembered");
+    await s.lock();
+    assert.strictEqual(await s.ctx.secrets.get("wintrail.rememberedKey"), undefined, "lock deletes the remembered key");
+    await s.unlock("integration-pass");
+    await new Promise((r) => setTimeout(r, 1100));
+    const fs = require("fs"), path = require("path");
+    fs.writeFileSync(path.join(s.ctx.globalStorageUri.fsPath, "lock-signal"), String(Date.now()));
+    for (let i = 0; i < 40 && s.store.isUnlocked; i++) await new Promise((r) => setTimeout(r, 100));
+    assert.strictEqual(s.store.isUnlocked, false, "lock signal from another window locks this one");
+    await s.unlock("integration-pass");
+    log("lock everywhere + remembered key cleared");
+
     await vscode.commands.executeCommand("wintrail.dashboard.focus");
     await new Promise((r) => setTimeout(r, 1000));
     await vscode.commands.executeCommand("wintrail.lock");

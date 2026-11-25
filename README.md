@@ -40,15 +40,27 @@ Log what you finish in 3 seconds, keep it **encrypted**, and at appraisal time s
 - **Edits and deletes:**
   - These need an unlocked session (HMAC), so someone at your desk can't silently delete or change entries.
   - Entries added while locked show **"added while locked · ✓ confirm"** until you confirm them. That's how a fake entry would be noticed.
-- **Changing your password** creates brand-new keys and re-encrypts everything. An old copied file plus your old password reads nothing new.
+- **Tampering is detected:**
+  - The public key is bound to your private key, so a swapped key file is refused instead of used.
+  - Removing or replaying authentic lines triggers a "log was changed" warning.
+  - Malformed records are ignored.
+- **Changing your password** creates brand-new keys, re-encrypts everything, and leaves no copy of the old keys.
+  It is crash-safe: an interruption rolls forward or back on the next unlock. Wintrail then offers to delete older backups,
+  which still open with the old password.
 - **Other safeguards:**
   - Locks on start and after 15 idle minutes (`wintrail.autoLockMinutes`).
   - Wrong passwords are throttled.
-  - Optional "remember on this machine" uses the OS keychain and is cleared by locking.
+  - Optional "remember on this machine" uses the OS keychain. **Lock** deletes it and locks every open VS Code window.
   - Several VS Code windows are safe at the same time.
 - **Backups:** auto-backup to a folder you choose (e.g. inside Dropbox, Drive or OneDrive). Backup files are the encrypted log and open with your password.
   **Import backup** merges and never replaces; your current log is backed up first.
 - The **only plaintext output** is the appraisal export, and it asks first.
+- **Git:** the standup reads git only in trusted workspaces, and only when your log is empty for that day. It always disables
+  repository settings that could run programs.
+- **Known limits:**
+  - Someone who can already write your files and VS Code's own storage can still receive *future* entries added while
+    Wintrail is locked. Your history stays protected, and unlocking reveals the tampering.
+  - Rolling back the log together with its integrity record to an older matching copy isn't detectable.
 
 There is **no password recovery**. Turn on auto-backup.
 

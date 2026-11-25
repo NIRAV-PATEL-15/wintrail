@@ -19,6 +19,8 @@ const toView = (e: Entry): EntryView => ({
   tags: e.tags, star: e.star, impact: e.impact, lockedAdd: e.lockedAdd,
 });
 
+const dataOf = (e: Entry) => ({ text: e.text, at: e.at, project: e.project, branch: e.branch, tags: e.tags, star: e.star, impact: e.impact });
+
 function writePrivate(path: string, content: string) {
   writeFileSync(path, content, { mode: 0o600 });
   try { chmodSync(path, 0o600); } catch { /* unsupported */ }
@@ -78,8 +80,7 @@ export class WintrailViewProvider implements vscode.WebviewViewProvider {
     const prevDay = previousWorkday(today);
     const [py, pm, pd] = prevDay.split("-").map(Number);
     const since = new Date(py, pm - 1, pd).getTime(), until = new Date(py, pm - 1, pd + 1).getTime();
-    const dirs = workspaceDirs();
-    const commits = dirs.length ? await gitCommits(dirs, await gitEmail(dirs[0]), since, until) : [];
+    const commits = entries.some((e) => localDay(e.at) === prevDay) ? [] : await this.commitsFor(prevDay, since, until);
     const plans = st.plans();
     const su = buildStandup({ entries, commits, today, branch: currentContext().branch, lastPlan: plans.find((p) => p.day === prevDay) });
     const bs = this.breaks.scheduler;
@@ -100,6 +101,19 @@ export class WintrailViewProvider implements vscode.WebviewViewProvider {
       backupWarning: this.s.backupWarning(entries.length),
       autoBackupFolder: cfg().autoBackupFolder,
     };
+  }
+
+  private commitCache: { key: string; at: number; commits: Awaited<ReturnType<typeof gitCommits>> } | null = null;
+  /** Git is only consulted in trusted workspaces, only when the log has nothing for that day, and cached briefly. */
+  private async commitsFor(day: string, since: number, until: number) {
+    if (!vscode.workspace.isTrusted) return [];
+    const dirs = workspaceDirs();
+    if (!dirs.length) return [];
+    const key = day + "|" + dirs.join(",");
+    if (this.commitCache && this.commitCache.key === key && Date.now() - this.commitCache.at < 10 * 60_000) return this.commitCache.commits;
+    const commits = await gitCommits(dirs, await gitEmail(dirs[0]), since, until);
+    this.commitCache = { key, at: Date.now(), commits };
+    return commits;
   }
 
   async pushState(throttledMs?: number) {
@@ -169,12 +183,12 @@ export class WintrailViewProvider implements vscode.WebviewViewProvider {
           const e = this.find(m.id);
           const q = parseQuickAdd(m.text);
           if (!q.text) throw new Error("Entry text can't be empty");
-          await this.s.mutate(() => this.s.store.edit(e.id, { ...e, text: q.text, tags: q.tags, star: q.star || e.star }));
+          await this.s.mutate(() => this.s.store.edit(e.id, { text: q.text, at: e.at, project: e.project, branch: e.branch, tags: q.tags, star: q.star || e.star, impact: e.impact }));
           this.post({ type: "done", form });
           break;
         }
-        case "toggleStar": { const e = this.find(m.id); await this.s.mutate(() => this.s.store.edit(e.id, { ...e, star: !e.star })); break; }
-        case "setImpact": { const e = this.find(m.id); await this.s.mutate(() => this.s.store.edit(e.id, { ...e, impact: m.impact })); break; }
+        case "toggleStar": { const e = this.find(m.id); await this.s.mutate(() => this.s.store.edit(e.id, { ...dataOf(e), star: !e.star })); break; }
+        case "setImpact": { const e = this.find(m.id); await this.s.mutate(() => this.s.store.edit(e.id, { ...dataOf(e), impact: m.impact })); break; }
         case "confirm": await this.s.mutate(() => this.s.store.confirm(m.id)); break;
         case "delete": {
           const e = this.find(m.id);
@@ -222,7 +236,7 @@ export class WintrailViewProvider implements vscode.WebviewViewProvider {
         : err instanceof WrongBackupPasswordError ? "Wrong backup password"
         : (err as Error).message || String(err);
       this.post({ type: "error", form, text });
-      if (err instanceof VaultChangedError) await this.pushState();
+      if (err instanceof VaultChangedError || (err as Error)?.name === "VaultTamperedError") await this.pushState();
       if (!["create", "unlock", "changePassword", "edit", "quickAdd"].includes(form)) this.post({ type: "toast", text, kind: "error" });
     }
   }

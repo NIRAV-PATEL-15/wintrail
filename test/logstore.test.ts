@@ -168,8 +168,11 @@ describe("password change rotates keys", () => {
     expect(t.entries().map((e) => e.text).sort()).toEqual(["after change", "before change"]);
   });
   it("another window detects the re-key and locks", async () => {
-    const a = await fresh();
-    const b = new LogStore(dir, P);
+    let pinned: string | undefined; // shared like VS Code globalState
+    const pin = { get: () => pinned, set: (p: string) => { pinned = p; } };
+    const a = new LogStore(dir, P, Date.now, pin);
+    await a.create(PW);
+    const b = new LogStore(dir, P, Date.now, pin);
     await b.unlock(PW);
     await a.changePassword(PW, "password-two");
     await expect(b.edit("x", data("y"))).rejects.toBeInstanceOf(VaultChangedError);

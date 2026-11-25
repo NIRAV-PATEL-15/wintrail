@@ -1,9 +1,12 @@
 import * as vscode from "vscode";
-import { LogStore, Entry, EntryData } from "../core/logstore";
+import { writeFileSync, statSync, mkdirSync, watch } from "node:fs";
+import { join } from "node:path";
+import { LogStore, Entry, EntryData, PubPin } from "../core/logstore";
 import { writeBackupFile } from "../core/backupfiles";
 
 const KEY_SECRET = "wintrail.rememberedKey";
-const REQUIRE_PW_KEY = "wintrail.requirePassword";
+const PIN_KEY = "wintrail.pinnedPublicKey";
+const LOCK_SIGNAL = "lock-signal";
 const LAST_BACKUP_KEY = "wintrail.lastBackupAt";
 const STALE_BACKUP_MS = 30 * 86_400_000;
 
@@ -22,6 +25,8 @@ export function cfg() {
 export class Session implements vscode.Disposable {
   readonly store: LogStore;
   private lastActivity = Date.now();
+  private unlockedAt = 0;
+  private get lockSignalPath() { return join(this.ctx.globalStorageUri.fsPath, LOCK_SIGNAL); }
   private readonly timer: NodeJS.Timeout;
   private backupTimer?: NodeJS.Timeout;
   private mutations = 0;
@@ -30,13 +35,32 @@ export class Session implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly ctx: vscode.ExtensionContext) {
-    this.store = new LogStore(ctx.globalStorageUri.fsPath);
-    this.timer = setInterval(() => this.checkAutoLock(), 10_000);
-    for (const file of ["entries.jsonl", "vault.json"]) {
-      const w = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(ctx.globalStorageUri, file));
-      const onExternal = () => { if (this.store.isUnlocked) { this.store.refresh(); this.fire(); } };
-      this.disposables.push(w, w.onDidChange(onExternal), w.onDidCreate(onExternal));
-    }
+    const pin: PubPin = { get: () => ctx.globalState.get<string>(PIN_KEY), set: async (p) => { await ctx.globalState.update(PIN_KEY, p); } };
+    this.store = new LogStore(ctx.globalStorageUri.fsPath, undefined, Date.now, pin);
+    // Poll as a fallback (fs.watch can miss events on some filesystems); every 2s is cheap.
+    this.timer = setInterval(() => { this.checkAutoLock(); this.checkLockSignal(); }, 2_000);
+    // VS Code's FileSystemWatcher is unreliable outside the workspace, so watch the storage folder directly.
+    try {
+      mkdirSync(ctx.globalStorageUri.fsPath, { recursive: true });
+      const w = watch(ctx.globalStorageUri.fsPath, (_ev, file) => {
+        const f = String(file ?? "");
+        if (f === LOCK_SIGNAL) this.checkLockSignal();
+        else if ((f === "entries.jsonl" || f === "vault.json") && this.store.isUnlocked) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = setTimeout(() => { this.store.refresh(); this.fire(); }, 150);
+        }
+      });
+      this.disposables.push({ dispose: () => w.close() });
+    } catch { /* polling still covers the lock signal */ }
+  }
+  private refreshTimer?: NodeJS.Timeout;
+
+  /** "Lock" in any window locks every window (newer than this window's last unlock). */
+  private checkLockSignal() {
+    if (!this.store.isUnlocked) return;
+    try {
+      if (statSync(this.lockSignalPath).mtimeMs > this.unlockedAt) { this.store.lock(); this.fire(); }
+    } catch { /* no signal yet */ }
   }
 
   dispose() {
@@ -52,15 +76,15 @@ export class Session implements vscode.Disposable {
 
   private checkAutoLock() {
     const mins = cfg().autoLockMinutes;
-    if (this.store.isUnlocked && mins > 0 && Date.now() - this.lastActivity > mins * 60_000) void this.lock();
+    if (this.store.isUnlocked && mins > 0 && Date.now() - this.lastActivity > mins * 60_000) void this.lock(false);
   }
 
   async tryRememberedUnlock() {
     if (!cfg().rememberOnThisMachine || !this.store.exists()) return;
-    if (this.ctx.globalState.get<boolean>(REQUIRE_PW_KEY, false)) return;
     const b64 = await this.ctx.secrets.get(KEY_SECRET);
     if (!b64) return;
     try {
+      this.unlockedAt = Date.now() + 1; // only lock signals written after this count
       await this.store.unlockWithKey(Buffer.from(b64, "base64"));
       this.afterUnlock();
     } catch {
@@ -83,32 +107,36 @@ export class Session implements vscode.Disposable {
   }
 
   async create(password: string) {
+    this.unlockedAt = Date.now() + 1; // only lock signals written after this count
     await this.store.create(password);
-    await this.ctx.globalState.update(REQUIRE_PW_KEY, false);
     await this.syncRememberedKey();
     this.afterUnlock();
   }
 
   async unlock(password: string) {
+    this.unlockedAt = Date.now() + 1; // only lock signals written after this count
     await this.store.unlock(password);
-    await this.ctx.globalState.update(REQUIRE_PW_KEY, false);
     await this.syncRememberedKey();
     this.afterUnlock();
   }
 
-  /** After a lock, the remembered key won't auto-unlock until a password unlock. */
-  async lock() {
-    if (!this.store.isUnlocked) return;
+  /** Lock this window and every other window. The remembered key is deleted (not just flagged),
+   *  so only a password unlock brings it back. Auto-lock (`everywhere=false`) only locks this window. */
+  async lock(everywhere = true) {
+    const was = this.store.isUnlocked;
     this.store.lock();
-    this.fire();
-    await this.ctx.globalState.update(REQUIRE_PW_KEY, true);
+    if (was) this.fire();
+    await this.ctx.secrets.delete(KEY_SECRET);
+    if (everywhere) {
+      try { mkdirSync(this.ctx.globalStorageUri.fsPath, { recursive: true }); writeFileSync(this.lockSignalPath, String(Date.now()), { mode: 0o600 }); } catch { /* ignore */ }
+    }
   }
 
   async changePassword(oldPw: string, newPw: string) {
     await this.store.changePassword(oldPw, newPw);
     await this.syncRememberedKey();
-    this.scheduleBackup();
     this.fire();
+    void this.offerToPruneOldBackups();
   }
 
   /** Quick-add: works while locked. */
@@ -161,6 +189,21 @@ export class Session implements vscode.Disposable {
       void vscode.window.showWarningMessage(`Wintrail auto-backup failed: ${(e as Error).message}`);
       if (force) throw e;
     }
+  }
+
+  /** After a password change, older auto-backups still open with the OLD password. */
+  async offerToPruneOldBackups() {
+    const folder = cfg().autoBackupFolder;
+    if (!folder) return;
+    const choice = await vscode.window.showWarningMessage(
+      "Your older Wintrail backups still open with the OLD password. If someone may know it, delete them.",
+      "Delete older backups", "Keep");
+    if (choice !== "Delete older backups") return;
+    const { readdirSync, unlinkSync } = await import("node:fs");
+    const ours = readdirSync(folder).filter((f) => /^wintrail-\d{8}-\d{6}\.wintrail$/.test(f));
+    for (const f of ours) { try { unlinkSync(join(folder, f)); } catch { /* ignore */ } }
+    await this.backupNow(true);
+    void vscode.window.showInformationMessage(`Deleted ${ours.length} older backup(s); a fresh backup was saved.`);
   }
 
   backupWarning(entryCount: number): "none" | "stale" | null {

@@ -316,7 +316,8 @@
   },
   "capabilities": {
     "untrustedWorkspaces": {
-      "supported": true
+      "supported": "limited",
+      "description": "In Restricted Mode Wintrail never runs git, so the standup uses only your log."
     },
     "virtualWorkspaces": true
   },

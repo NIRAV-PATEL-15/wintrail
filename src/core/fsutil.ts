@@ -29,7 +29,7 @@ export async function withFileLock<T>(lockPath: string, fn: () => Promise<T> | T
   }
 }
 
-function fsyncDir(path: string) {
+export function fsyncDir(path: string) {
   try {
     const d = openSync(dirname(path), "r");
     try { fsyncSync(d); } finally { closeSync(d); }

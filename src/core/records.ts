@@ -33,15 +33,32 @@ export function encodeRecord(publicKey: Buffer, macKey: Buffer | undefined, rec:
   return JSON.stringify(line);
 }
 
-/** null = unreadable (torn, corrupt, or sealed to another key). */
-export function decodeLine(line: string, opener: Opener, macKey: Buffer): { rec: Rec; authentic: boolean } | null {
+/** Strict shape check for entry data coming out of a file (a forged record must not break the UI/export). */
+export function isEntryData(d: unknown): d is EntryData {
+  const x = d as EntryData;
+  return !!x && typeof x === "object"
+    && typeof x.text === "string" && x.text.length > 0 && x.text.length <= 500
+    && typeof x.at === "number" && Number.isFinite(x.at)
+    && typeof x.project === "string" && x.project.length <= 200
+    && typeof x.branch === "string" && x.branch.length <= 250
+    && Array.isArray(x.tags) && x.tags.length <= 50 && x.tags.every((t) => typeof t === "string" && t.length <= 64)
+    && typeof x.star === "boolean" && (x.impact === "normal" || x.impact === "high");
+}
+
+/** Only the known fields, so nothing else is ever sealed or displayed. */
+export function pickEntryData(d: EntryData): EntryData {
+  return { text: d.text, at: d.at, project: d.project, branch: d.branch, tags: [...d.tags], star: d.star, impact: d.impact };
+}
+
+/** null = unreadable (torn, corrupt, or sealed to another key). `r`/`m` let replay spot duplicates and check the head. */
+export function decodeLine(line: string, opener: Opener, macKey: Buffer): { rec: Rec; authentic: boolean; r: string; m?: string } | null {
   try {
     const l = JSON.parse(line) as Line;
     if (!l || typeof l.r !== "string" || !l.s) return null;
     const rec = JSON.parse(unpad(openSealed(opener, l.s)).toString("utf8")) as Rec;
     if (!rec || typeof rec !== "object" || typeof (rec as { kind?: unknown }).kind !== "string") return null;
     const authentic = typeof l.m === "string" && verifyMac(macKey, macInput(l.r, l.s), l.m);
-    return { rec, authentic };
+    return { rec, authentic, r: l.r, m: authentic ? l.m : undefined };
   } catch {
     return null;
   }
