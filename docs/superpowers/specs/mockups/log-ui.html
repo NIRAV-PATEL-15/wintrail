@@ -1,0 +1,81 @@
+<style>
+  .side { background:#181818; color:#ccc; font-family:system-ui,sans-serif; font-size:12px; border-radius:10px; padding:12px; width:300px; margin:0 auto; min-height:430px; position:relative; overflow:hidden }
+  .tabsw { display:flex; gap:4px; background:#232323; padding:3px; border-radius:9px; margin-bottom:10px } .tabsw span { flex:1; text-align:center; padding:5px 0; border-radius:7px; color:#888; font-weight:600; font-size:11px } .tabsw span.on { background:#2f2f3a; color:#fff }
+  .quick { display:flex; gap:6px; align-items:center; background:#232323; border:1px solid #3a3a55; border-radius:10px; padding:8px 10px; color:#777; box-shadow:0 0 0 3px #6a5cff22 }
+  .quick .cur { width:1px; height:14px; background:#8ea2ff; animation:blink 1s steps(1) infinite } @keyframes blink { 50%{ opacity:0 } }
+  .hint { font-size:10px; color:#666; margin:5px 2px 10px }
+  .day { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#777; margin:10px 0 6px; display:flex; justify-content:space-between }
+  .entry { display:flex; gap:9px; padding:8px 9px; border-radius:10px; background:#202020; border:1px solid #2a2a2a; margin-bottom:6px; animation:pop .5s cubic-bezier(.2,1.4,.4,1) both }
+  .entry:nth-child(2){animation-delay:.1s} .entry:nth-child(3){animation-delay:.2s} .entry:nth-child(4){animation-delay:.3s}
+  @keyframes pop { from{ transform:translateY(10px) scale(.96); opacity:0 } }
+  .dot { width:8px; height:8px; border-radius:50%; background:#6a7cff; margin-top:4px; flex:none }
+  .entry.star { background:linear-gradient(135deg,#2c2540,#22223a); border-color:#6a5cff66; position:relative }
+  .entry.star .dot { background:none; width:auto; height:auto; margin:0; font-size:13px; animation:spin 3s ease-in-out infinite } @keyframes spin { 0%,80%{ transform:none } 90%{ transform:scale(1.4) rotate(20deg) } }
+  .meta { color:#777; font-size:10px; margin-top:2px } .tag { color:#9aa5ff }
+  .spark { position:absolute; right:10px; top:6px; font-size:10px; animation:float 2s ease-out infinite } @keyframes float { from{ transform:translateY(4px); opacity:1 } to{ transform:translateY(-12px); opacity:0 } }
+
+  .heat { display:grid; grid-template-columns:repeat(18,1fr); gap:3px; margin:6px 0 4px }
+  .heat i { aspect-ratio:1; border-radius:3px; background:#262626; animation:fadein .4s both } @keyframes fadein { from{ opacity:0; transform:scale(.5) } }
+  .l1{background:#2e3566!important}.l2{background:#4350a8!important}.l3{background:#6a7cff!important}.l4{background:#b38bff!important}
+  .stats { display:flex; gap:6px; margin:10px 0 } .stats div { flex:1; background:#202020; border-radius:10px; padding:8px; text-align:center } .stats b { display:block; font-size:18px; color:#fff } .stats span { font-size:10px; color:#777 }
+  .flame { display:inline-block; animation:flick 1.2s ease-in-out infinite alternate } @keyframes flick { from{ transform:scale(1) rotate(-4deg) } to{ transform:scale(1.15) rotate(4deg) } }
+  .yr { background:radial-gradient(circle at 30% 0, #2b2f6b, #141428 70%); border-radius:12px; color:#ddd; padding:14px; font-family:system-ui,sans-serif; font-size:12px }
+  .yr h4 { margin:0 0 2px; color:#fff; font-size:16px } .bar { height:8px; border-radius:9px; background:linear-gradient(90deg,#6a7cff,#b38bff); animation:grow 1.4s ease-out both; margin:3px 0 7px } @keyframes grow { from{ width:0 } }
+  .hl { background:#ffffff12; border-radius:9px; padding:7px 9px; margin:5px 0; animation:pop .6s both } .hl:nth-child(2){animation-delay:.2s} .hl:nth-child(3){animation-delay:.4s}
+</style>
+
+<h2>Workday sidebar: which direction feels right?</h2>
+<p class="subtitle">Both share the same quick-add box and Today / Standup / Year tabs. Animations are live. Click one.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a-timeline" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#111">
+      <div class="side">
+        <div class="tabsw"><span class="on">Today</span><span>Standup</span><span>Year</span></div>
+        <div class="quick">✎ <span>What did you just finish?</span><span class="cur"></span></div>
+        <div class="hint">Enter to save · start with <b>!</b> for ⭐ highlight · #tags</div>
+        <div class="day"><span>Today · Wed 25 Nov</span><span>3 entries</span></div>
+        <div>
+          <div class="entry star"><span class="dot">⭐</span><div>Cut login API latency 900ms → 120ms<div class="meta">authora-api · feature/perf · 11:40 · <span class="tag">#performance</span></div></div><span class="spark">✨</span></div>
+          <div class="entry"><span class="dot"></span><div>Reviewed 3 PRs for payments team<div class="meta">payments · main · 15:10 · <span class="tag">#review</span></div></div></div>
+          <div class="entry"><span class="dot"></span><div>Fixed token refresh race<div class="meta">authora-api · fix/refresh · 17:25 · <span class="tag">#bugfix</span></div></div></div>
+        </div>
+        <div class="day"><span>Yesterday</span><span>2 entries</span></div>
+        <div class="entry"><span class="dot"></span><div>Onboarded new intern on repo setup<div class="meta">· 10:05 · <span class="tag">#mentoring</span></div></div></div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A · Clean timeline</h3>
+      <p>Focused on writing and reading entries. Cards pop in, ⭐ highlights glow and sparkle. Calm and quick. Stats live in the Year tab.</p></div>
+  </div>
+
+  <div class="card" data-choice="b-dashboard" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#111">
+      <div class="side">
+        <div class="tabsw"><span class="on">Today</span><span>Standup</span><span>Year</span></div>
+        <div class="quick">✎ <span>What did you just finish?</span><span class="cur"></span></div>
+        <div class="stats"><div><b><span class="flame">🔥</span>12</b><span>day streak</span></div><div><b>⭐ 9</b><span>this month</span></div><div><b>148</b><span>entries 2026</span></div></div>
+        <div class="day"><span>Last 18 weeks</span><span>less ▢▣■ more</span></div>
+        <div class="heat" id="h"></div>
+        <script>
+          (function(){var h=document.getElementById('h');var c=['','l1','l2','l3','l4'];for(var i=0;i<126;i++){var e=document.createElement('i');var r=Math.random();e.className=r<.25?'':r<.5?'l1':r<.75?'l2':r<.92?'l3':'l4';e.style.animationDelay=(i*6)+'ms';h.appendChild(e)}})();
+        </script>
+        <div class="day"><span>Today</span><span>3 entries</span></div>
+        <div class="entry star"><span class="dot">⭐</span><div>Cut login API latency 900ms → 120ms<div class="meta">authora-api · 11:40 · <span class="tag">#performance</span></div></div><span class="spark">✨</span></div>
+        <div class="entry"><span class="dot"></span><div>Reviewed 3 PRs for payments team<div class="meta">payments · 15:10</div></div></div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B · Dashboard + activity heatmap</h3>
+      <p>Adds a GitHub-style heatmap, streak flame and counters above the timeline. More motivating and "gamey", but busier.</p></div>
+  </div>
+</div>
+
+<h3 style="margin-top:28px">Preview: the Year tab (same in both)</h3>
+<div class="yr" style="max-width:520px">
+  <h4>Your 2026 at work ✨</h4><div style="color:#99a">148 entries · 9 projects · 31 highlights</div>
+  <div style="margin-top:10px">authora-api</div><div class="bar" style="width:88%"></div>
+  <div>payments</div><div class="bar" style="width:61%"></div>
+  <div>internal-tools</div><div class="bar" style="width:34%"></div>
+  <div style="margin-top:8px;font-weight:600;color:#fff">⭐ Top highlights</div>
+  <div><div class="hl">⭐ Cut login API latency 900ms → 120ms · Oct</div><div class="hl">⭐ Led migration to Postgres 16 with zero downtime · Jul</div><div class="hl">⭐ Mentored 2 interns to first production PRs · Mar</div></div>
+  <div style="margin-top:8px;color:#aab">[ Export for appraisal (Markdown) ]  [ Copy highlights ]</div>
+</div>

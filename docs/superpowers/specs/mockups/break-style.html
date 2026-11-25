@@ -1,0 +1,82 @@
+<style>
+  .vs { background:#1e1e1e; border-radius:10px; overflow:hidden; font-family:system-ui,sans-serif; color:#ccc; position:relative; height:330px; }
+  .vs .tabs { background:#252526; height:28px; display:flex; font-size:11px; }
+  .vs .tab { padding:7px 12px; border-right:1px solid #1e1e1e; }
+  .vs .tab.on { background:#1e1e1e; color:#fff; }
+  .vs .code { padding:12px 16px; font:12px/1.7 monospace; color:#6a9955; }
+  .vs .code b { color:#569cd6; font-weight:normal } .vs .code i { color:#ce9178; font-style:normal }
+  .vs .status { position:absolute; bottom:0; left:0; right:0; height:22px; background:#007acc; font-size:11px; color:#fff; display:flex; align-items:center; padding:0 10px; justify-content:space-between }
+
+  /* A: full break tab */
+  .break { position:absolute; top:28px; left:0; right:0; bottom:22px; background:radial-gradient(circle at 50% 40%, #2b2f6b, #14152b 70%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+  .orb { width:110px; height:110px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #8ea2ff, #6a4cff 60%, #4a2fd6); box-shadow:0 0 50px #6a4cff88; animation:breathe 6s ease-in-out infinite; display:grid; place-items:center; font-size:34px; }
+  @keyframes breathe { 0%,100%{ transform:scale(.82) } 50%{ transform:scale(1.08) } }
+  .break h4 { margin:4px 0 0; color:#fff; font-size:17px } .break p { margin:0; font-size:12px; color:#aab }
+  .ringbar { width:180px; height:5px; border-radius:9px; background:#ffffff22; overflow:hidden } .ringbar div { height:100%; background:linear-gradient(90deg,#8ea2ff,#c08bff); animation:fill 20s linear infinite }
+  @keyframes fill { from{ width:0 } to{ width:100% } }
+  .btns { display:flex; gap:8px; margin-top:6px } .btns span { font-size:11px; padding:6px 12px; border-radius:7px; background:#ffffff1a; color:#fff } .btns span.p { background:linear-gradient(135deg,#6a7cff,#a35bff) }
+
+  /* B: toast */
+  .toast { position:absolute; right:12px; bottom:32px; width:300px; background:#252526; border:1px solid #3c3c3c; border-radius:6px; padding:10px 12px; font-size:12px; box-shadow:0 6px 20px #0008; animation:slide 2.5s ease-out infinite alternate; }
+  @keyframes slide { from{ transform:translateY(12px); opacity:.6 } to{ transform:none; opacity:1 } }
+  .toast .row { display:flex; gap:6px; margin-top:8px } .toast .row span { padding:3px 9px; background:#0e639c; color:#fff; border-radius:2px; font-size:11px } .toast .row span.g { background:#3a3d41 }
+
+  /* C: escalate */
+  .pulse { display:inline-block; animation:pulse 1.2s infinite } @keyframes pulse { 50%{ opacity:.35; transform:scale(1.25) } }
+  .arrow { text-align:center; font-size:12px; color:#888; margin:6px 0 }
+</style>
+
+<h2>How should a break reminder appear?</h2>
+<p class="subtitle">Animations are live. Click the one that feels right (you can also mix, e.g. C).</p>
+
+<div class="cards">
+  <div class="card" data-choice="a-fullscreen" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="vs">
+        <div class="tabs"><div class="tab">auth.ts</div><div class="tab on">🌿 Break time</div></div>
+        <div class="break">
+          <div class="orb">👀</div>
+          <h4>Eye break · look 20 ft away</h4>
+          <p>Breathe in as the circle grows… out as it shrinks</p>
+          <div class="ringbar"><div></div></div>
+          <div class="btns"><span class="p">Done ✓</span><span>Snooze 10m</span><span>Skip</span></div>
+        </div>
+        <div class="status"><span>main</span><span>🌿 break 0:14</span></div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A · Full animated break screen</h3>
+      <p>Opens over your editor as a full tab with a breathing animation, guided stretch steps and a countdown. Impossible to miss. Closes itself when the break is over.</p></div>
+  </div>
+
+  <div class="card" data-choice="b-notification" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="vs">
+        <div class="tabs"><div class="tab on">auth.ts</div></div>
+        <div class="code"><b>export async function</b> refresh(token) {<br>&nbsp;&nbsp;<b>const</b> res = <b>await</b> fetch(<i>"/api/refresh"</i>)<br>&nbsp;&nbsp;// …<br>}</div>
+        <div class="toast">💧 <b>Hydration check</b> — 70 min of coding. Grab some water?
+          <div class="row"><span>Done</span><span class="g">Snooze 10m</span><span class="g">Skip</span></div></div>
+        <div class="status"><span>main</span><span>💧 70m</span></div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B · VS Code notification</h3>
+      <p>Standard notification in the bottom-right corner with buttons. Quick and unobtrusive, but no animation and easy to ignore.</p></div>
+  </div>
+
+  <div class="card" data-choice="c-escalate" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="vs" style="height:auto;padding-bottom:30px">
+        <div class="tabs"><div class="tab on">auth.ts</div></div>
+        <div style="padding:10px 14px;font-size:12px">
+          <div>① <b>Notification first</b>: "🧘 Time to stretch (50 min)" [Start break] [Snooze]</div>
+          <div class="arrow">↓ click Start break, or ignore it for 5 min</div>
+          <div>② <b>Full animated break screen</b> opens (like A)</div>
+          <div class="arrow">↓ still ignored?</div>
+          <div>③ Status bar keeps a gentle <span class="pulse">🌿</span> pulse until you take or skip it</div>
+        </div>
+        <div class="status"><span>main</span><span><span class="pulse">🧘</span> stretch due</span></div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C · Notification → escalates to full screen (my pick)</h3>
+      <p>Polite first, then pushier only if you keep ignoring it. You can choose per reminder: eyes = notification, stretch = full screen, etc.</p></div>
+  </div>
+</div>
